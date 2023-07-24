@@ -12,6 +12,6 @@ def mse(X, y):
 def rmse(X, y):
     
     num_samples = y.shape[0]
-    rmse = num_samples**(-1) * np.sum((X - y)**2)**(1/2)
+    rmse = ( num_samples**(-1) * np.sum((X - y)**2) )**(1/2)
     
     return rmse

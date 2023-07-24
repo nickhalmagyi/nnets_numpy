@@ -6,12 +6,19 @@ from src.functions import rmse, mse
 
 class FeedForwardModel:
     
-    def __init__(self, layer_sizes, input_size, loss_fn):
-        
+    def __init__(self, layer_sizes, input_size, loss_fn, alpha=0.0001):
+        """
+        param: layer_sizes - list of integers, representing the size of the hidden layers. 
+                            The final integer is the size of the output.
+               input_size - integer for the size of the input.
+            loss_fn - must be in ['rmse', 'mse']
+            alpha - the L2 regularization coefficient
+        """
         self.layer_sizes = layer_sizes
         self.input_size = input_size
         self.layers = self._make_layers()
         self.assign_loss_fn(loss_fn)
+        self.alpha = alpha
         
         self._make_input_sizes()
             
@@ -52,13 +59,13 @@ class FeedForwardModel:
         
         final_layer = True
         num_samples = y_true.shape[0]
-        
+        print(f'num_samples: {num_samples}')
         for layer in self.layers[::-1]:
             if final_layer:
                 if self.loss_fn==rmse:
-                    layer.delta = num_samples**(-1) * loss**(-1) * (y_pred - y_true) 
+                    layer.delta = num_samples**(-1) * loss**(-1) * (y_pred - y_true) + self.alpha * num_samples**(-1) * y_pred
                 elif self.loss_fn==mse:
-                    layer.delta = num_samples**(-1) * (y_pred - y_true) 
+                    layer.delta = num_samples**(-1) * (y_pred - y_true) + self.alpha * num_samples**(-1) * y_pred
                 final_layer = False
             else:
                 layer.delta = np.multiply(next_layer.delta @ next_layer.W, layer.fZ_deriv)
@@ -85,7 +92,10 @@ class FeedForwardModel:
         for epoch_num in range(epochs):
             
             y_pred = self.forward_pass(data)
-            loss = self.loss_fn(y_pred, y_true)
+            
+            num_samples = y_true.shape[0]
+            loss = self.loss_fn(y_pred, y_true) + self.alpha * num_samples**(-1) * np.sum(y_pred**2) 
 
-            self.backward_pass(y_pred=y_pred, y_true=y_true, loss=loss, learning_rate=learning_rate)      
+            self.backward_pass(y_pred=y_pred, y_true=y_true, loss=loss, learning_rate=learning_rate) 
+            
             print(f"""epoch: {epoch_num}, loss: {loss}, time elapsed: {time.time()-start}\n""")
